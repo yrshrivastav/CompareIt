@@ -1,5 +1,4 @@
-package com.compareit.app.entities;
-
+package com.compareit.entities;
 
 import jakarta.persistence.*;
 import lombok.*;

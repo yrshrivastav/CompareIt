@@ -1,10 +1,11 @@
-package com.compareit.app.services;
+package com.compareit.services;
 
-import com.compareit.app.custom_exception.AuthenticationException;
-import com.compareit.app.custom_exception.ResourceNotFoundException;
-import com.compareit.app.dto.ProductDto;
-import com.compareit.app.entities.Product;
-import com.compareit.app.repository.ProductRepository;
+
+import com.compareit.custom_exception.AuthenticationException;
+import com.compareit.custom_exception.ResourceNotFoundException;
+import com.compareit.dto.ProductDto;
+import com.compareit.entities.Product;
+import com.compareit.repository.ProductRepository;
 import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,7 @@ public class ProductServiceImpl implements ProductService {
     private final ModelMapper modelMapper;
 
     @Override
-    public ProductDto createProduct(ProductDto productDto)  {
+    public ProductDto createProduct(ProductDto productDto) {
 
         if (productRepository.existsBySourceUrl(productDto.getSourceUrl())) {
             throw new AuthenticationException("Product already exists for this URL");

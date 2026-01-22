@@ -1,4 +1,4 @@
-package com.compareit.app;
+package com.compareit;
 
 import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
@@ -10,9 +10,9 @@ import org.springframework.context.annotation.Bean;
 @SpringBootApplication
 public class CompareItApplication {
 
-	public static void main(String[] args) {
+    public static void main(String[] args) {
         SpringApplication.run(CompareItApplication.class, args);
-	}
+    }
 
     @Bean
     ModelMapper modelMapper() {

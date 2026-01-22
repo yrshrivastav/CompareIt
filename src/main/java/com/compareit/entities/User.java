@@ -1,4 +1,4 @@
-package com.compareit.app.entities;
+package com.compareit.entities;
 
 
 import jakarta.persistence.*;
@@ -35,4 +35,5 @@ public class User {
     private Boolean active = true;
 
 }
+
 

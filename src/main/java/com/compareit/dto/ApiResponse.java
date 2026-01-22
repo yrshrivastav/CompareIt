@@ -1,4 +1,4 @@
-package com.compareit.app.dto;
+package com.compareit.dto;
 
 
 import lombok.AllArgsConstructor;
@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ApiResponse {
-//    private boolean success;
+    //    private boolean success;
     private String message;
     private LocalDateTime timestamp;
 

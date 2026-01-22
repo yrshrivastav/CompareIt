@@ -1,8 +1,8 @@
-package com.compareit.app.controller;
+package com.compareit.controller;
 
 
-import com.compareit.app.dto.ProductDto;
-import com.compareit.app.services.ProductService;
+import com.compareit.dto.ProductDto;
+import com.compareit.services.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

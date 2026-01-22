@@ -1,5 +1,4 @@
-package com.compareit.app.dto;
-
+package com.compareit.dto;
 
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -29,4 +28,5 @@ public class UserDto {
 
 
 }
+
 

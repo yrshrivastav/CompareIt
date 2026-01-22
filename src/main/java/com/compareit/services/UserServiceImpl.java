@@ -1,9 +1,9 @@
-package com.compareit.app.services;
+package com.compareit.services;
 
-import com.compareit.app.custom_exception.ResourceNotFoundException;
-import com.compareit.app.dto.UserDto;
-import com.compareit.app.entities.User;
-import com.compareit.app.repository.UserRepository;
+import com.compareit.custom_exception.ResourceNotFoundException;
+import com.compareit.dto.UserDto;
+import com.compareit.entities.User;
+import com.compareit.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -14,7 +14,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class UserServiceImpl implements UserService{
+public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
 

@@ -1,6 +1,7 @@
-package com.compareit.app.services;
+package com.compareit.services;
 
-import com.compareit.app.dto.ProductDto;
+
+import com.compareit.dto.ProductDto;
 
 import java.util.List;
 
@@ -14,3 +15,4 @@ public interface ProductService {
 
     void deleteProduct(Long id);
 }
+

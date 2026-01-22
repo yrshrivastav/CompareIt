@@ -1,6 +1,6 @@
-package com.compareit.app.repository;
+package com.compareit.repository;
 
-import com.compareit.app.entities.User;
+import com.compareit.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

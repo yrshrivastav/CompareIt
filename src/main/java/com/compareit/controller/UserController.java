@@ -1,9 +1,9 @@
-package com.compareit.app.controller;
+package com.compareit.controller;
 
 
-import com.compareit.app.dto.ApiResponse;
-import com.compareit.app.dto.UserDto;
-import com.compareit.app.services.UserService;
+import com.compareit.dto.ApiResponse;
+import com.compareit.dto.UserDto;
+import com.compareit.services.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -1,6 +1,7 @@
-package com.compareit.app.services;
+package com.compareit.services;
 
-import com.compareit.app.dto.UserDto;
+
+import com.compareit.dto.UserDto;
 
 import java.util.List;
 

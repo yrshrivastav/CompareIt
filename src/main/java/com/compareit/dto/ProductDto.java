@@ -1,5 +1,4 @@
-package com.compareit.app.dto;
-
+package com.compareit.dto;
 
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -29,3 +28,4 @@ public class ProductDto {
     )
     private String sourceUrl;
 }
+
