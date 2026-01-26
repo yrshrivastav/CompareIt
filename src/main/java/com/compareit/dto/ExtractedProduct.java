@@ -5,6 +5,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @ToString
@@ -14,7 +16,7 @@ public class ExtractedProduct {
     private String title;
     private String brand;
     private String model;
-    private Double price;
+    private BigDecimal price;
     private Double rating;
     private EcommercePlatform platform;
     private String productUrl;
