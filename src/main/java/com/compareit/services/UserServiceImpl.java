@@ -6,6 +6,8 @@ import com.compareit.entities.User;
 import com.compareit.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,8 +28,8 @@ public class UserServiceImpl implements UserService {
         }
 
         User user = modelMapper.map(userDto, User.class);
-
-        user.setRole("USER");
+        user.setPassword(new BCryptPasswordEncoder().encode(userDto.getPassword()));
+        //user.setRole("USER");
         user.setActive(true);
 
         User savedUser = userRepository.save(user);
