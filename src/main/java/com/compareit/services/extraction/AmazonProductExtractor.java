@@ -2,6 +2,7 @@ package com.compareit.services.extraction;
 
 import com.compareit.dto.EcommercePlatform;
 import com.compareit.dto.ExtractedProduct;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -13,10 +14,8 @@ import java.io.IOException;
 import java.math.BigDecimal;
 
 @Service
+@Slf4j
 public class AmazonProductExtractor implements ProductExtractor {
-
-    private static final Logger log =
-            LoggerFactory.getLogger(AmazonProductExtractor.class);
 
     @Override
     public ExtractedProduct extract(String productUrl) {
