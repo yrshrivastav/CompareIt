@@ -2,22 +2,16 @@ package com.compareit.services.extraction;
 
 import com.compareit.dto.EcommercePlatform;
 import com.compareit.dto.ExtractedProduct;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -30,195 +24,176 @@ public class FlipkartProductExtractor implements ProductExtractor {
 
     @Override
     public ExtractedProduct extract(String productUrl) {
+
         log.info("Starting Flipkart product extraction for URL: {}", productUrl);
 
         try {
             Document doc = Jsoup.connect(productUrl)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                    .timeout(10_000)
+                    .header("Accept-Language", "en-IN,en;q=0.9")
+                    .timeout(15_000)
                     .get();
 
             ExtractedProduct product = new ExtractedProduct();
             product.setPlatform(EcommercePlatform.FLIPKART);
             product.setProductUrl(productUrl);
 
+            // ---------------- TITLE ----------------
             product.setTitle(extractTitle(doc));
-            log.debug("Flipkart title extracted: {}", product.getTitle());
-
-
             if (product.getTitle() == null || product.getTitle().isBlank()) {
-                log.error("Flipkart title extraction failed for URL: {}", productUrl);
-                throw new IllegalStateException("Failed to extract product title from Flipkart");
+                throw new IllegalStateException("Flipkart title not found");
             }
 
-            product.setPrice(extractPrice(doc));
-            log.debug("Flipkart price extracted: {}", product.getPrice());
+            // ---------------- PRICE ----------------
+            BigDecimal price = extractPriceFromJson(doc);
+            if (price == null) {
+                price = extractPriceFromDom(doc);
+            }
+            product.setPrice(price);
 
-            product.setRating(extractRating(doc));
-            log.debug("Flipkart rating extracted: {}", product.getRating());
+            // ---------------- RATING (STRICT) ----------------
+            product.setRating(extractProductRatingFromJson(doc));
 
-            // Price & Rating using Selenium
-            product.setPrice(fetchPriceWithSelenium(productUrl));
-            log.debug("Flipkart price extracted: {}", product.getPrice());
-
-            product.setRating(fetchRatingWithSelenium(productUrl));
-            log.debug("Flipkart rating extracted: {}", product.getRating());
-
+            // ---------------- BRAND & MODEL ----------------
             deriveBrandAndModel(product);
-            log.debug("Derived brand: {}, model: {}",
-                    product.getBrand(), product.getModel());
 
             log.info("Flipkart extraction successful for URL: {}", productUrl);
             return product;
 
         } catch (IOException e) {
-            log.error("Flipkart page fetch failed for URL: {}", productUrl, e);
-            throw new RuntimeException("Failed to connect to Flipkart", e);
+            log.error("Flipkart fetch failed", e);
+            throw new RuntimeException("Flipkart connection failed", e);
         }
     }
 
-    private void deriveBrandAndModel(ExtractedProduct product) {
+    // ---------------------------------------------------------------------
+    // TITLE
+    // ---------------------------------------------------------------------
 
-        String title = product.getTitle();
+    private String extractTitle(Document doc) {
+        String[] selectors = {
+                "span.B_NuCI",
+                "h1 span"
+        };
 
-        if (title == null || title.isBlank()) {
-            return;
+        for (String selector : selectors) {
+            Element el = doc.selectFirst(selector);
+            if (el != null && !el.text().isBlank()) {
+                return el.text().trim();
+            }
+        }
+        return null;
+    }
+
+    // ---------------------------------------------------------------------
+    // PRICE (JSON FIRST)
+    // ---------------------------------------------------------------------
+
+    private BigDecimal extractPriceFromJson(Document doc) {
+
+        String json = extractEmbeddedJson(doc);
+        if (json == null) return null;
+
+        Pattern pattern = Pattern.compile(
+                "\"(sellingPrice|price|finalPrice|discountedPrice)\"[^}]*?(\\d{3,7})"
+        );
+
+        Matcher matcher = pattern.matcher(json);
+        if (matcher.find()) {
+            return new BigDecimal(matcher.group(2));
+        }
+        return null;
+    }
+
+    // ---------------------------------------------------------------------
+    // PRICE (DOM FALLBACK)
+    // ---------------------------------------------------------------------
+
+    private BigDecimal extractPriceFromDom(Document doc) {
+
+        String[] selectors = {
+                "div._30jeq3._16Jk6d",
+                "div._30jeq3",
+                "div.Nx9bqj"
+        };
+
+        for (String selector : selectors) {
+            Element el = doc.selectFirst(selector);
+            if (el != null) {
+                String text = el.text().replaceAll("[₹,]", "").trim();
+                try {
+                    return new BigDecimal(text);
+                } catch (NumberFormatException ignored) {}
+            }
         }
 
-        // Normalize spaces
-        title = title.trim().replaceAll("\\s+", " ");
+        log.warn("Flipkart price not found in DOM");
+        return null;
+    }
+
+    // ---------------------------------------------------------------------
+    // PRODUCT RATING (JSON ONLY – STRICT)
+    // ---------------------------------------------------------------------
+
+    private Double extractProductRatingFromJson(Document doc) {
+
+        String json = extractEmbeddedJson(doc);
+        if (json == null) {
+            log.info("No embedded JSON found for rating");
+            return null;
+        }
+
+        // Schema.org aggregateRating (MOST TRUSTED)
+        Pattern schemaPattern = Pattern.compile(
+                "\"aggregateRating\"\\s*:\\s*\\{[^}]*?\"ratingValue\"\\s*:\\s*(\\d+(?:\\.\\d+)?)",
+                Pattern.DOTALL
+        );
+
+        Matcher schemaMatcher = schemaPattern.matcher(json);
+        if (schemaMatcher.find()) {
+            return Double.parseDouble(schemaMatcher.group(1));
+        }
+
+        // Product JSON averageRating (PID-based)
+        Pattern productPattern = Pattern.compile(
+                "\"averageRating\"\\s*:\\s*(\\d+(?:\\.\\d+)?)"
+        );
+
+        Matcher productMatcher = productPattern.matcher(json);
+        if (productMatcher.find()) {
+            return Double.parseDouble(productMatcher.group(1));
+        }
+
+        log.info("Product rating not verifiable — returning null");
+        return null;
+    }
+
+    // ---------------------------------------------------------------------
+    // EMBEDDED JSON
+    // ---------------------------------------------------------------------
+
+    private String extractEmbeddedJson(Document doc) {
+        for (Element script : doc.select("script")) {
+            String data = script.data();
+            if (data.contains("aggregateRating")
+                    || data.contains("averageRating")
+                    || data.contains("sellingPrice")) {
+                return data;
+            }
+        }
+        return null;
+    }
+
+    // ---------------------------------------------------------------------
+    // BRAND & MODEL
+    // ---------------------------------------------------------------------
+
+    private void deriveBrandAndModel(ExtractedProduct product) {
+        String title = product.getTitle();
+        if (title == null) return;
 
         String[] tokens = title.split(" ");
-
-        if (tokens.length == 1) {
-            // Single word title
-            product.setBrand(tokens[0]);
-            product.setModel("");
-            return;
-        }
-
-        // Heuristic:
-        // Brand = first word
-        // Model = rest
         product.setBrand(tokens[0]);
         product.setModel(title.substring(tokens[0].length()).trim());
     }
-
-
-    private String extractTitle(Document doc) {
-
-        String[] selectors = {
-                "span.B_NuCI",           // mobiles
-                "h1 span",               // generic products
-                "h1._6EBuvT",             // some electronics
-                "h1.yhB1nd"               // fallback
-        };
-
-        for (String selector : selectors) {
-            Element titleEl = doc.selectFirst(selector);
-            if (titleEl != null && !titleEl.text().isBlank()) {
-                return titleEl.text().trim();
-            }
-        }
-
-        return null;
-    }
-
-
-    private BigDecimal extractPrice(Document doc) {
-
-        String[] selectors = {
-                "div._30jeq3._16Jk6d",   // mobiles
-                "div.Nx9bqj",            // electronics & accessories
-                "div.CxhGGd"             // fallback
-        };
-
-        for (String selector : selectors) {
-            Element priceEl = doc.selectFirst(selector);
-            if (priceEl != null) {
-                String priceText = priceEl.text()
-                        .replace("₹", "")
-                        .replace(",", "")
-                        .trim();
-                try {
-                    return new BigDecimal(priceText);
-                } catch (NumberFormatException ignored) {}
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Selenium + WebDriverManager-based price extraction with fallback
-     */
-    private BigDecimal fetchPriceWithSelenium(String url) {
-        // Setup ChromeDriver automatically
-        WebDriverManager.chromedriver().setup();
-
-        // Headless Chrome
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");
-        options.addArguments("--disable-gpu");
-
-        WebDriver driver = new ChromeDriver(options);
-
-        try {
-            driver.get(url);
-
-            WebElement priceEl = driver.findElement(By.cssSelector("._30jeq3"));
-            String priceText = priceEl.getText().replace("₹", "").replace(",", "").trim();
-            return new BigDecimal(priceText);
-        } catch (Exception e) {
-            log.warn("Selenium price extraction failed, using default price", e);
-            return null;
-        } finally {
-            driver.quit();
-        }
-    }
-
-    private Double extractRating(Document doc) {
-
-        String[] selectors = {
-                "div._3LWZlK",   // mobiles
-                "div.XQDdHH"     // accessories
-        };
-
-        for (String selector : selectors) {
-            Element ratingEl = doc.selectFirst(selector);
-            if (ratingEl != null) {
-                try {
-                    return Double.parseDouble(ratingEl.text().trim());
-                } catch (NumberFormatException ignored) {}
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Selenium + WebDriverManager-based rating extraction with fallback
-     */
-    private Double fetchRatingWithSelenium(String url) {
-        WebDriverManager.chromedriver().setup();
-
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");
-        options.addArguments("--disable-gpu");
-
-        WebDriver driver = new ChromeDriver(options);
-
-        try {
-            driver.get(url);
-
-            WebElement ratingEl = driver.findElement(By.cssSelector("._3LWZlK"));
-            return Double.parseDouble(ratingEl.getText().trim());
-        } catch (Exception e) {
-            log.warn("Selenium rating extraction failed, using default rating", e);
-            return null;
-        } finally {
-            driver.quit();
-        }
-    }
-
-
 }
-
